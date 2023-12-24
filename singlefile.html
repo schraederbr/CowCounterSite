@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- <link rel="stylesheet" href="stylesheet.css"> -->
+    <style>
+html {
+    font-size: 5vw;
+    /* Black Background */
+    background-color: black;
+    /* White Text */
+    color: white;
+}
+button, input {
+    font-size: 5vw; /* 25% of the table width */
+    width: 100%;    
+    background-color: black;
+    color: white;
+    border: 1px solid white;
+    /* margin: 2px 5px 5px 2px; */
+}
+.base-table {
+    width: 100%; /* 50% of the table width */
+    font-size: 5vw;
+    /* border: 1px solid black; */
+    /* Padding */
+    /*padding: 5px 5px 5px 5px;  top, right, bottom, left */
+
+}
+
+.button-table {
+    font-size: 5vw;
+}
+
+.text-input {
+    font-size: 5vw; /* 25% of the table width */
+}
+
+.active-status {
+    color: red;
+}
+    </style>
+    <script>
+        class CowPlayer {
+    constructor(name, score, drunk = false, fire = false, drunkActiveHours = 0, fireActiveHours = 0) {
+        this.name = name;
+        this.score = score;
+        this.drunk = drunk;
+        this.drunkActiveHours = 0;
+        this.fire = fire;
+        this.fireActiveHours = 0;
+
+    }
+
+    static fromLocalStorage(key) {
+        let data = localStorage.getItem(key);
+        if (data === null) return null;
+        let parsedData = JSON.parse(data);
+        return new CowPlayer(parsedData.name, parsedData.score, parsedData.drunk, parsedData.fire, parsedData.drunkActiveHours, parsedData.fireActiveHours);
+    }
+}
+
+
+let players = [];
+
+function saveInputToLocalStorage(key, id) {
+    localStorage.setItem(key, document.getElementById(id).value);
+}
+
+function retrieveFromLocalStorage(key) {
+    return localStorage.getItem(key);
+}
+
+function inputUpdate(id, val) {
+    document.getElementById(id).textContent = "Hello, " + val;
+}
+
+function updateTextWithInput(id, val) {
+    document.getElementById(id).textContent = "Hello, " + val;
+}
+
+function loadPlayers() {
+    players = [];
+    let playerTablesDiv = document.getElementById('playerTables');
+    playerTablesDiv.innerHTML = '';
+    let playerCount = localStorage.length;
+    for (let i = 0; i < playerCount; i++) {
+        let key = localStorage.key(i);
+        if(key == 'LastDate') continue;
+        let player = CowPlayer.fromLocalStorage(key)
+        players.push(player);
+        displayPlayer(player, key);
+    }
+}
+
+function savePlayer(player) {
+    localStorage.setItem(player.name, JSON.stringify(player));
+}
+
+function savePlayers(players) {
+    players.forEach((player, index) => {
+        savePlayer(player, index);
+    });
+}
+
+function addPlayer(name) {
+    players.push(new CowPlayer(name, 0));
+    savePlayers(players);
+    loadPlayers();
+}
+
+function deletePlayer(key) {
+    localStorage.removeItem(key);
+    loadPlayers();
+}
+
+function updateScore(key, newScore) {
+    let player = CowPlayer.fromLocalStorage(key);
+    player.score = newScore;
+    savePlayer(player);
+    loadPlayers();
+}
+
+function addScore(key, score) {
+    let player = CowPlayer.fromLocalStorage(key);
+    //Convert to int
+    score = parseFloat(score);
+    playerScore = parseFloat(player.score);
+
+    playerScore += score;
+    player.score = playerScore;
+    savePlayer(player);
+    loadPlayers();
+}
+// % loss per hour
+
+const timeFields = {
+    drunk: { lossRate: 60, maxHours: 6, activeHours: 0 },
+    fire: { lossRate: 10, maxHours: 4, activeHours: 0 }
+}
+
+function updateAllTimeFields() {
+
+    players.forEach(player => {
+        updateTimeFields(player);
+    });
+    loadPlayers();
+}
+
+function saveCurrentDate() {
+    localStorage.setItem('LastDate', Date.now());
+}
+function readLastDate() {
+    let lastDate = localStorage.getItem('LastDate');
+    if(lastDate === null) return null;
+    return new Date(parseInt(lastDate));
+}
+
+// This probahly operated differently whether this is called frequently or not.
+// If it's called infrequently it would result in a larger drop.
+// Because it will be doing a percent loss of a larger number.
+// Frequent calls result in updating the score more often so each call
+// will result in a smaller drop.
+function updateTimeFields(player) {
+    let lastDate = readLastDate();
+    let currentDate = new Date();
+    let diffInMs = currentDate - lastDate;
+    let diffInHours = diffInMs / 1000 / 60 / 60;
+
+    for (let field in timeFields) {
+        if (player[field] === true) {
+            // There's probably a cleaner way to do this.
+            // Maybe make drunk a tuple in player
+            let activeHours = 0;
+            if(field === 'drunk') {
+                activeHours = player.drunkActiveHours + diffInHours;
+            }
+            else if(field === 'fire') {
+                activeHours = player.fireActiveHours + diffInHours;
+            }
+            if (activeHours > timeFields[field].maxHours) {
+                diffInHours = timeFields[field].maxHours - timeFields[field].activeHours;
+                player[field] = false;
+            }
+            player.score -= timeFields[field].lossRate * diffInHours * player.score;
+            if(player.score < 1) player.score = 0;
+            console.log(player.score);
+            if(player.score <= 0) {
+                player.score = 0;
+                player[field] = false
+            }
+            timeFields[field].activeHours = activeHours;
+        }
+    }
+    saveCurrentDate();
+    savePlayer(player);
+    
+}
+
+function addButton(parent, name, callback) {
+    let tableRow = document.createElement('tr');
+    let button = document.createElement('button');
+    button.classList.add('button');
+    button.textContent = name;
+    button.addEventListener('click', callback);
+    tableRow.appendChild(button);
+    parent.appendChild(tableRow);
+
+}
+
+function displayPlayer(player, key) {
+    let baseTable = document.createElement('table');
+    baseTable.classList.add('base-table');
+
+    let playerTable = document.createElement('table');
+
+    let nameRow = document.createElement('tr');
+    let nameValue = document.createElement('td');
+    nameValue.appendChild(document.createTextNode(player.name));
+    nameRow.appendChild(nameValue);
+
+    let scoreRow = document.createElement('tr');
+    let scoreValue = document.createElement('td');
+    scoreValue.appendChild(document.createTextNode(Math.round(player.score)));
+
+    let drunkRow = document.createElement('tr');
+    let drunkValue = document.createElement('td');
+    drunkValue.appendChild(document.createTextNode("Drunk: " + (player.drunk ? 'Yes' : 'No')));
+    drunkRow.appendChild(drunkValue);
+
+    let fireRow = document.createElement('tr');
+    let fireValue = document.createElement('td');
+    fireValue.appendChild(document.createTextNode("On Fire: " + (player.fire ? 'Yes' : 'No')));
+    fireRow.appendChild(fireValue);
+
+    let addInput = document.createElement('input');
+    addInput.classList.add('text-input');
+    addInput.id = key + '_score';
+    addInput.type = "number";
+    addInput.onchange = function () {
+        addScore(key, addInput.value);
+    }
+
+    // scoreRow.appendChild(scoreLabel);
+    scoreRow.appendChild(scoreValue);
+    
+    
+    let addRow = document.createElement('tr');
+    // let addLabel = document.createElement('td');
+    // addLabel.appendChild(document.createTextNode('Add:'));
+    // addRow.appendChild(addLabel);
+    // addRow.appendChild(addValue);
+
+
+    addRow.appendChild(addInput);
+
+    let buttonTable = document.createElement('table');
+    buttonTable.classList.add('button-table');
+
+    addButton(buttonTable, 'Church', () => {
+        updateScore(key, player.score * 2); 
+        player.drunk = false; 
+        player.fire = false;})
+    addButton(buttonTable, 'Graveyard', () => updateScore(key, player.score / 2))
+    addButton(buttonTable, 'Drunk', () => {
+        player.drunk = !player.drunk;
+        updateAllTimeFields();
+    })
+    addButton(buttonTable, 'Fire', () => {
+        player.fire = !player.fire;
+        updateAllTimeFields();
+    })
+    addButton(buttonTable, 'Delete', () => {
+        var result = confirm("Are you sure you want to delete? " + player.name);
+        if (result) deletePlayer(key);
+    })
+
+    playerTable.appendChild(nameRow);
+    playerTable.appendChild(addRow);
+    playerTable.appendChild(scoreRow);
+    playerTable.appendChild(drunkRow);
+    playerTable.appendChild(fireRow);
+
+    let playerTablesDiv = document.getElementById('playerTables');
+    playerTd = document.createElement('td');
+    playerTd.appendChild(playerTable);
+    buttonTd = document.createElement('td');
+    buttonTd.appendChild(buttonTable);
+    baseTable.appendChild(playerTd);
+    baseTable.appendChild(buttonTd);
+
+    playerTablesDiv.appendChild(baseTable);
+
+}
+// const intervalId = setInterval(updateAllTimeFields, 1000);
+
+    </script>
+</head>
+
+<body>
+    <button onclick="updateAllTimeFields()">Update</button>
+    <div id="playerTables">
+        
+    </div>
+    <!-- <script src="main.js"></script> -->
+
+    <p>
+        New Player Name:
+        <input type="text" id="newPlayerName">
+        <button onclick="addPlayer(document.getElementById('newPlayerName').value)">Add Player</button>
+    </p>
+    <script>loadPlayers();updateAllTimeFields();</script>
+</body>
+
+</html>
