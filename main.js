@@ -1,22 +1,77 @@
+const oneHourInMilliseconds = 60 * 60 * 1000;
+
 
 class StatusEffect {
-    constructor(name, lossRate, maxHours, activeHours = 0, lastDate = 0, totalLoss = 0) {
+    constructor(name, totalLoss, maxHours, time = 0) {
         this.name = name;
-        this.lossRate = lossRate;
-        this.maxHours = maxHours;
-        this.activeHours = activeHours;
-        if(lastDate === 0) lastDate = Date.now();
-        else{
-            this.lastDate = lastDate;
-        }
-        
         this.totalLoss = totalLoss;
-    }
-
-    static calculateTotalLoss(effect, score) {
-        return effect.lossRate * effect.maxHours * score;
-    }
+        this.maxHours = maxHours;
+        if(time === 0) time = Date.now();
+        this.time = time;
+    }   
 }
+let score = 100
+// Create some StatusEffect instances
+let statusEffect1 = new StatusEffect("Fire", 0.1, 2, 1000);
+
+let statusEffect2 = new StatusEffect("Drunk", 0.05, 4, 2000);
+
+// Store the instances in an array
+let statusEffectsArray = [statusEffect1, statusEffect2];
+
+// Optionally, log the array to the console to verify
+console.log(statusEffectsArray);
+
+console.log(score);
+
+function applyStatusEffect(statusEffect) {
+    // Ensure the current date is within the duration of the status effect
+    currentDate = Date.now();
+    
+    // This shouldn't happen
+    if (currentDate < statusEffect.startDate) return 0;
+    
+    if (currentDate > statusEffect.endDate) return score * statusEffect.totalLoss;
+
+    const elapsedTime = currentDate - statusEffect.time;
+    
+    // Calculate the elapsed hours considering the loss rate
+    const elapsedHours = elapsedTime / oneHourInMilliseconds;
+    const scoreReduction = statusEffect.totalLoss * elapsedHours / statusEffect.maxHours;
+
+    return scoreReduction;
+}
+
+function applyAllStatusEffects() {
+    let totalScoreReduction = 0;
+    statusEffectsArray.forEach(statusEffect => {
+        totalScoreReduction += applyStatusEffect(statusEffect);
+    });
+
+    return totalScoreReduction;
+}
+
+score = score - applyAllStatusEffects();
+console.log(score);
+
+// class StatusEffect {
+//     constructor(name, lossRate, maxHours, activeHours = 0, lastDate = 0, totalLoss = 0) {
+//         this.name = name;
+//         this.lossRate = lossRate;
+//         this.maxHours = maxHours;
+//         this.activeHours = activeHours;
+//         if(lastDate === 0) lastDate = Date.now();
+//         else{
+//             this.lastDate = lastDate;
+//         }
+        
+//         this.totalLoss = totalLoss;
+//     }
+
+//     static calculateTotalLoss(effect, score) {
+//         return effect.lossRate * effect.maxHours * score;
+//     }
+// }
 
 class CowPlayer {
     constructor(name, score, statusEffects = []) {  
@@ -51,6 +106,23 @@ class CowPlayer {
     removeEffect(effectName) {
         this.statusEffects = this.statusEffects.filter(effect => effect.name !== effectName);
     }
+
+    applyStatusEffect(statusEffect) {
+        // Ensure the current date is within the duration of the status effect
+        // This shouldn't happen
+        if (currentDate < statusEffect.startDate) return 0;
+        
+        if (currentDate > statusEffect.endDate) return this.score * statusEffect.rate;
+    
+        const elapsedTime = currentDate - statusEffect.startDate;
+        
+        // Calculate the elapsed hours considering the loss rate
+        const elapsedHours = elapsedTime / statusEffect.oneHourInMilliseconds;
+        const scoreReduction = statusEffect.lossRate * elapsedHours;
+    
+        return scoreReduction;
+    }
+
     applyEffect(effect) {
         console.log("Total Loss: " + effect.totalLoss)
         let currentDate = Date.now();
