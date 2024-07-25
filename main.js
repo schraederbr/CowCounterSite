@@ -24,6 +24,8 @@ console.log(statusEffectsArray);
 
 console.log(score);
 
+// WHen an event occures, reapply the status effects, modify them to match the new score
+// Apply the score then redo the affect for shorter time.
 function applyStatusEffect(statusEffect) {
     // Ensure the current date is within the duration of the status effect
     currentDate = Date.now();
