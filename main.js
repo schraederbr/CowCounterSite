@@ -3,6 +3,7 @@ const oneHourInMilliseconds = 60 * 60 * 1000;
 
 class StatusEffect {
     //Time in milliseconds
+    // I need to add an end time, and use that for deletion
     constructor(name, totalChange, maxHours, startTime = -1) {
         this.name = name;
         this.totalChange = totalChange;
@@ -74,34 +75,6 @@ class CowPlayer {
         this.statusEffects = this.statusEffects.filter(effect => effect.name !== effectName);
     }
 
-    applyEffect(effect) {
-        console.log("Total Loss: " + effect.totalLoss)
-        let currentDate = Date.now();
-        let diffInMs = currentDate - effect.lastDate;
-        let diffInHours = diffInMs / 1000 / 60 / 60;
-        let activeHours = 0;
-        let savedActiveHours = effect.activeHours;
-
-        activeHours = effect.activeHours + diffInHours;
-
-        if (activeHours > effect.maxHours) {
-            diffInHours = effect.maxHours - savedActiveHours;
-            this.removeEffect(effect.name);
-        }
-
-        this.score -= diffInHours/effect.maxHours * effect.totalLoss;
-        if(this.score <= 1) {
-            this.score = 0;
-            this.removeEffect(effect.name);
-        }
-        else{
-            effect.activeHours = activeHours;
-        }
-        
-        savePlayer(this);
-    }
-
-
     applyAllEffects(currentDate) {
             let totalScoreChangeRatio = 0;
             this.statusEffects.forEach(statusEffect => {
@@ -142,7 +115,6 @@ function loadPlayers() {
     let playerCount = localStorage.length;
     for (let i = 0; i < playerCount; i++) {
         let key = localStorage.key(i);
-        if(key == 'LastDate') continue;
         let player = CowPlayer.fromLocalStorage(key)
         players.push(player);
         displayPlayer(player, key);
@@ -306,6 +278,10 @@ function displayPlayer(player, key) {
 }
 // const intervalId = setInterval(updateAllTimeFields, 1000);
 loadPlayers();
-updateAllTimeFields();
+
+//May want to add this back. 
+//There is a problem with coming back to the game after closing, 
+//the score isn't properly lowered. 
+//updateAllTimeFields();
 
 
