@@ -2,78 +2,43 @@ const oneHourInMilliseconds = 60 * 60 * 1000;
 
 
 class StatusEffect {
-    constructor(name, totalLoss, maxHours, time = 0) {
+    //Time in milliseconds
+    constructor(name, totalChange, maxHours, startTime = -1) {
         this.name = name;
-        this.totalLoss = totalLoss;
+        this.totalChange = totalChange;
         this.maxHours = maxHours;
-        if(time === 0) time = Date.now();
-        this.time = time;
+        if(startTime === -1) startTime = Date.now();
+        this.startTime = startTime;
     }   
-}
-let score = 100
-// Create some StatusEffect instances
-let statusEffect1 = new StatusEffect("Fire", 0.1, 2, 1000);
-
-let statusEffect2 = new StatusEffect("Drunk", 0.05, 4, 2000);
-
-// Store the instances in an array
-let statusEffectsArray = [statusEffect1, statusEffect2];
-
-// Optionally, log the array to the console to verify
-console.log(statusEffectsArray);
-
-console.log(score);
-
-// WHen an event occures, reapply the status effects, modify them to match the new score
-// Apply the score then redo the affect for shorter time.
-function applyStatusEffect(statusEffect) {
-    // Ensure the current date is within the duration of the status effect
-    currentDate = Date.now();
-    
-    // This shouldn't happen
-    if (currentDate < statusEffect.startDate) return 0;
-    
-    if (currentDate > statusEffect.endDate) return score * statusEffect.totalLoss;
-
-    const elapsedTime = currentDate - statusEffect.time;
-    
-    // Calculate the elapsed hours considering the loss rate
-    const elapsedHours = elapsedTime / oneHourInMilliseconds;
-    const scoreReduction = statusEffect.totalLoss * elapsedHours / statusEffect.maxHours;
-
-    return scoreReduction;
-}
-
-function applyAllStatusEffects() {
-    let totalScoreReduction = 0;
-    statusEffectsArray.forEach(statusEffect => {
-        totalScoreReduction += applyStatusEffect(statusEffect);
-    });
-
-    return totalScoreReduction;
-}
-
-score = score - applyAllStatusEffects();
-console.log(score);
-
-// class StatusEffect {
-//     constructor(name, lossRate, maxHours, activeHours = 0, lastDate = 0, totalLoss = 0) {
-//         this.name = name;
-//         this.lossRate = lossRate;
-//         this.maxHours = maxHours;
-//         this.activeHours = activeHours;
-//         if(lastDate === 0) lastDate = Date.now();
-//         else{
-//             this.lastDate = lastDate;
-//         }
+    getScoreReduction(currentTime) {
+        //This shouldn't happen
+        if (currentTime < this.startTime) return 0;
         
-//         this.totalLoss = totalLoss;
-//     }
+        //Delete the statusEffect
+        if (currentTime > this.startTime + this.maxHours * oneHourInMilliseconds) {
+            console.log("Status Effect: " + this.name);
+            console.log("Score Reduction: " + this.totalChange);
+            return this.totalChange;
+        }
+        const elapsedTime = currentTime - this.startTime;
+        
+        // Calculate the elapsed hours considering the loss rate
+        const elapsedHours = elapsedTime / oneHourInMilliseconds;
+        const scoreReduction = this.totalChange * elapsedHours / this.maxHours;
+        // Print name of status effect
+        console.log("Status Effect: " + this.name);
+        console.log("Score Reduction: " + scoreReduction);
+        this.startTime = currentTime;
+        return scoreReduction;
+    }
 
-//     static calculateTotalLoss(effect, score) {
-//         return effect.lossRate * effect.maxHours * score;
-//     }
-// }
+    isActive(currentDate) {
+        if(currentDate < this.startTime + this.maxHours * oneHourInMilliseconds){
+            if(currentDate >= this.startTime) return true;
+        }
+        return false;
+    }
+}
 
 class CowPlayer {
     constructor(name, score, statusEffects = []) {  
@@ -89,7 +54,7 @@ class CowPlayer {
 
         // Construct StatusEffect instances from the parsed data
         let statusEffects = parsedData.statusEffects.map(effectData => 
-            new StatusEffect(effectData.name, effectData.lossRate, effectData.maxHours, effectData.activeHours, effectData.lastDate, effectData.totalLoss)
+            new StatusEffect(effectData.name, effectData.totalChange, effectData.maxHours, effectData.time)
         );
         
         return new CowPlayer(parsedData.name, parsedData.score, statusEffects);
@@ -107,22 +72,6 @@ class CowPlayer {
 
     removeEffect(effectName) {
         this.statusEffects = this.statusEffects.filter(effect => effect.name !== effectName);
-    }
-
-    applyStatusEffect(statusEffect) {
-        // Ensure the current date is within the duration of the status effect
-        // This shouldn't happen
-        if (currentDate < statusEffect.startDate) return 0;
-        
-        if (currentDate > statusEffect.endDate) return this.score * statusEffect.rate;
-    
-        const elapsedTime = currentDate - statusEffect.startDate;
-        
-        // Calculate the elapsed hours considering the loss rate
-        const elapsedHours = elapsedTime / statusEffect.oneHourInMilliseconds;
-        const scoreReduction = statusEffect.lossRate * elapsedHours;
-    
-        return scoreReduction;
     }
 
     applyEffect(effect) {
@@ -152,18 +101,28 @@ class CowPlayer {
         savePlayer(this);
     }
 
-    applyAllEffects() {
-        this.statusEffects.forEach(effect => this.applyEffect(effect));
+
+    applyAllEffects(currentDate) {
+            let totalScoreChangeRatio = 0;
+            this.statusEffects.forEach(statusEffect => {
+                totalScoreChangeRatio += statusEffect.getScoreReduction(currentDate);
+                if(!statusEffect.isActive(currentDate)){
+                    this.removeEffect(statusEffect.name);
+                }
+            });
+            this.score = this.score * (1 + totalScoreChangeRatio);
+            savePlayer(this);
+            return totalScoreChangeRatio;
+        }
     }
-}
 
 function getStatusEffectByName(name) {
     return PRESET_STATUS_EFFECTS.find(effect => effect.name === name);
 }
 
 const PRESET_STATUS_EFFECTS = [
-    new StatusEffect('Drunk', 60, 0.002), 
-    new StatusEffect('Fire', 10, 0.002) 
+    new StatusEffect('Drunk', -0.1, 0.1, 0), 
+    new StatusEffect('Fire', -0.5, 0.3, 0), 
 ];
 
 let players = [];
@@ -174,14 +133,6 @@ function saveInputToLocalStorage(key, id) {
 
 function retrieveFromLocalStorage(key) {
     return localStorage.getItem(key);
-}
-
-function inputUpdate(id, val) {
-    document.getElementById(id).textContent = "Hello, " + val;
-}
-
-function updateTextWithInput(id, val) {
-    document.getElementById(id).textContent = "Hello, " + val;
 }
 
 function loadPlayers() {
@@ -221,6 +172,7 @@ function deletePlayer(key) {
 
 function updateScore(key, newScore) {
     let player = CowPlayer.fromLocalStorage(key);
+    player.applyAllEffects(Date.now());
     player.score = newScore;
     savePlayer(player);
     loadPlayers();
@@ -237,17 +189,14 @@ function addScore(key, score) {
     loadPlayers();
 }
 
-
-
-
 function updateAllTimeFields() {
     players.forEach(player => {
-        player.applyAllEffects();
+        player.applyAllEffects(Date.now());
     });
+    console.log(players[0].statusEffects);
     savePlayers(players);
     loadPlayers();
 }
-
 
 function addButton(parent, name, callback) {
     let tableRow = document.createElement('tr');
@@ -299,11 +248,14 @@ function displayPlayer(player, key) {
     buttonTable.classList.add('button-table');
 
     addButton(buttonTable, 'Church', () => {
+        player.applyAllEffects(Date.now());
         updateScore(key, player.score * 2); 
         player.drunk = false; 
         player.fire = false;})
-    addButton(buttonTable, 'Graveyard', () => updateScore(key, player.score / 2))
-    // It seems like the first time you press this there is a large drop. Time might be off.
+    addButton(buttonTable, 'Graveyard', () => {
+        player.applyAllEffects(Date.now());
+        updateScore(key, player.score / 2);
+    })
     PRESET_STATUS_EFFECTS.forEach(effect => {
         addButton(buttonTable, effect.name, () => {
             if (player.hasEffect(effect.name)) {
@@ -313,11 +265,9 @@ function displayPlayer(player, key) {
                 // It's important not to directly push Effect as that would lead all players sharing same status instance.
                 let clonedStatus = new StatusEffect(
                         effect.name,
-                        effect.lossRate,
+                        effect.totalChange,
                         effect.maxHours,
-                        effect.activeHours,
-                        Date.now(),
-                        StatusEffect.calculateTotalLoss(effect, player.score));
+                        Date.now(),)
                 player.addEffect(clonedStatus);
             }
             updateAllTimeFields();
@@ -344,7 +294,7 @@ function displayPlayer(player, key) {
 
 
     let playerTablesDiv = document.getElementById('playerTables');
-    playerTd = document.createElement('td');
+    let playerTd = document.createElement('td');
     playerTd.appendChild(playerTable);
     buttonTd = document.createElement('td');
     buttonTd.appendChild(buttonTable);
