@@ -316,9 +316,10 @@ function displayPlayer(player, key) {
     playerTablesDiv.appendChild(baseTable);
 
 }
-// const intervalId = setInterval(updateAllTimeFields, 1000);
+
 loadPlayers();
 updateAllTimeFields();
+const intervalId = setInterval(updateAllTimeFields, 1000);
 //May want to add this back. 
 //There is a problem with coming back to the game after closing, 
 //the score isn't properly lowered. 
