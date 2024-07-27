@@ -4,40 +4,59 @@ const oneHourInMilliseconds = 60 * 60 * 1000;
 class StatusEffect {
     //Time in milliseconds
     // I need to add an end time, and use that for deletion
-    constructor(name, totalChange, maxHours, startTime = -1) {
+    constructor(name, totalChange, maxHours, score, startTime = -1, endTime = -1) {
         this.name = name;
         this.totalChange = totalChange;
         this.maxHours = maxHours;
-        if(startTime === -1) startTime = Date.now();
+        this.score = score;
+        if(startTime === -1) {
+            startTime = Date.now();
+            // console.log("Start Time is -1");
+        }
         this.startTime = startTime;
+        if(endTime === -1){
+            endTime = startTime + maxHours * oneHourInMilliseconds;
+            // console.log("End Time is -1");
+        } 
+        this.endTime = endTime;
+        // console.log("Start Time: " + this.startTime);
+        // console.log("End Time: " + this.endTime);
     }   
     getScoreReduction(currentTime) {
+        console.log("Status Effect: " + this.name);
+        // console.log("Current Time: " + (currentTime - 1722037368376) / oneHourInMilliseconds);
+        // console.log("Start Time: " + (this.startTime - 1722037368376) / oneHourInMilliseconds);
+        // console.log("End Time: " + (this.endTime - 1722037368376) / oneHourInMilliseconds);
+        // console.log("Max Hours: " + this.maxHours);
+        console.log("Score: " + this.score);
+        // console.log("Total Change: " + this.totalChange);
         //This shouldn't happen
         if (currentTime < this.startTime) return 0;
-        
-        //Delete the statusEffect
-        if (currentTime > this.startTime + this.maxHours * oneHourInMilliseconds) {
-            console.log("Status Effect: " + this.name);
-            console.log("Score Reduction: " + this.totalChange);
-            return this.totalChange;
+        if(this.startTime > this.endTime) {
+            console.log("Error: Start time is greater than end time");
+            return 0;
         }
-        const elapsedTime = currentTime - this.startTime;
-        
+        let elapsedTime;
+        //Delete the statusEffect
+        if (currentTime > this.endTime) {
+            elapsedTime = this.endTime - this.startTime;
+        }
+        else{
+            elapsedTime = currentTime - this.startTime;
+        }
+        console.log("Elapsed Time: " + elapsedTime);
         // Calculate the elapsed hours considering the loss rate
         const elapsedHours = elapsedTime / oneHourInMilliseconds;
         const scoreReduction = this.totalChange * elapsedHours / this.maxHours;
         // Print name of status effect
-        console.log("Status Effect: " + this.name);
+        
         console.log("Score Reduction: " + scoreReduction);
         this.startTime = currentTime;
-        return scoreReduction;
+        return scoreReduction * this.score;
     }
 
     isActive(currentDate) {
-        if(currentDate < this.startTime + this.maxHours * oneHourInMilliseconds){
-            if(currentDate >= this.startTime) return true;
-        }
-        return false;
+        return currentDate < this.endTime && currentDate >= this.startTime
     }
 }
 
@@ -54,8 +73,9 @@ class CowPlayer {
         let parsedData = JSON.parse(data);
 
         // Construct StatusEffect instances from the parsed data
+        //constructor(name, totalChange, maxHours, startTime = -1, endTime = -1) {
         let statusEffects = parsedData.statusEffects.map(effectData => 
-            new StatusEffect(effectData.name, effectData.totalChange, effectData.maxHours, effectData.time)
+            new StatusEffect(effectData.name, effectData.totalChange, effectData.maxHours, effectData.score, effectData.startTime, effectData.endTime)
         );
         
         return new CowPlayer(parsedData.name, parsedData.score, statusEffects);
@@ -77,25 +97,37 @@ class CowPlayer {
 
     applyAllEffects(currentDate) {
             let totalScoreChangeRatio = 0;
+            let totalScoreChange = 0;
             this.statusEffects.forEach(statusEffect => {
-                totalScoreChangeRatio += statusEffect.getScoreReduction(currentDate);
+                //totalScoreChangeRatio += statusEffect.getScoreReduction(currentDate);
+                totalScoreChange += statusEffect.getScoreReduction(currentDate);
                 if(!statusEffect.isActive(currentDate)){
                     this.removeEffect(statusEffect.name);
                 }
             });
-            this.score = this.score * (1 + totalScoreChangeRatio);
+            //this.score = this.score * (1 + totalScoreChangeRatio);
+            console.log("Total Score Change: " + totalScoreChange);
+            this.score = this.score + totalScoreChange;
             savePlayer(this);
             return totalScoreChangeRatio;
         }
+    
+    updateStatusEffectScores(){
+            this.statusEffects.forEach(statusEffect => {
+                statusEffect.score = this.score;
+            });
+        }
     }
+
+
 
 function getStatusEffectByName(name) {
     return PRESET_STATUS_EFFECTS.find(effect => effect.name === name);
 }
 
 const PRESET_STATUS_EFFECTS = [
-    new StatusEffect('Drunk', -0.1, 0.1, 0), 
-    new StatusEffect('Fire', -0.5, 0.3, 0), 
+    new StatusEffect('Drunk', -0.1, 0.001, 0, 0, 0), 
+    new StatusEffect('Fire', -0.5, 0.0083333, 0, 0 , 0), 
 ];
 
 let players = [];
@@ -144,8 +176,10 @@ function deletePlayer(key) {
 
 function updateScore(key, newScore) {
     let player = CowPlayer.fromLocalStorage(key);
+    //We might not need this call
     player.applyAllEffects(Date.now());
     player.score = newScore;
+    player.updateStatusEffectScores();
     savePlayer(player);
     loadPlayers();
 }
@@ -157,6 +191,7 @@ function addScore(key, score) {
 
     playerScore += score;
     player.score = playerScore;
+    player.updateStatusEffectScores();
     savePlayer(player);
     loadPlayers();
 }
@@ -206,6 +241,8 @@ function displayPlayer(player, key) {
     addInput.id = key + '_score';
     addInput.type = "number";
     addInput.onchange = function () {
+        player.applyAllEffects(Date.now());
+        // updateScore(key, player.score + addInput.value);
         addScore(key, addInput.value);
     }
 
@@ -239,7 +276,10 @@ function displayPlayer(player, key) {
                         effect.name,
                         effect.totalChange,
                         effect.maxHours,
-                        Date.now(),)
+                        player.score,
+                        Date.now(),
+                        Date.now() + effect.maxHours * oneHourInMilliseconds
+                );
                 player.addEffect(clonedStatus);
             }
             updateAllTimeFields();
@@ -278,10 +318,10 @@ function displayPlayer(player, key) {
 }
 // const intervalId = setInterval(updateAllTimeFields, 1000);
 loadPlayers();
-
+updateAllTimeFields();
 //May want to add this back. 
 //There is a problem with coming back to the game after closing, 
 //the score isn't properly lowered. 
-//updateAllTimeFields();
+//
 
 
