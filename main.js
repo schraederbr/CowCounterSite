@@ -316,6 +316,7 @@ function displayPlayer(player, key) {
     let qrDiv = document.createElement('div');
     qrDiv.classList.add('qr-container');
     let qr = qrcode(0, 'L');
+    //I might want to compress the qr code
     qr.addData("https://schraederbr.github.io/?playerinfo=" + JSON.stringify(player));
     qr.make();
     qrDiv.innerHTML = qr.createImgTag(6);
