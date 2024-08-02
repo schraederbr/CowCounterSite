@@ -265,6 +265,11 @@ function displayPlayer(player, key) {
         player.applyAllEffects(Date.now());
         updateScore(key, player.score / 2);
     })
+    // Need to implement this so it steals from other players
+    addButton(buttonTable, 'Delivery', () => {
+        player.applyAllEffects(Date.now());
+        // updateScore(key, player.score + 10);
+    })
     PRESET_STATUS_EFFECTS.forEach(effect => {
         addButton(buttonTable, effect.name, () => {
             if (player.hasEffect(effect.name)) {
