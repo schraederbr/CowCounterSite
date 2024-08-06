@@ -268,7 +268,15 @@ function displayPlayer(player, key) {
     // Need to implement this so it steals from other players
     addButton(buttonTable, 'Delivery', () => {
         player.applyAllEffects(Date.now());
-        // updateScore(key, player.score + 10);
+        //For loop through all players
+        let additionalScore = 0;
+        players.forEach(p => {
+            if(p.name !== player.name){
+                additionalScore += p.score / 10;
+                updateScore(p.name, p.score - p.score / 10);
+            }
+        });
+        updateScore(key, player.score + additionalScore);
     })
     PRESET_STATUS_EFFECTS.forEach(effect => {
         addButton(buttonTable, effect.name, () => {
