@@ -9,7 +9,7 @@
 <body>
 
     
-    <button onclick="saveCurrentDate()" >Save Time</button>
+    <!-- <button onclick="saveCurrentDate()" >Save Time</button> -->
     <button onclick="updateAllTimeFields()">Update</button>
     <div id="playerTables">
         
@@ -22,6 +22,8 @@
         <input type="text" id="newPlayerName">
         <button onclick="addPlayer(document.getElementById('newPlayerName').value)">Add Player</button>
     </p>
+    <button onclick="normalizeScores()">Normalize</button>
+    <p id="multiplier"></p>
 
 </body>
 

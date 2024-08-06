@@ -131,6 +131,7 @@ const PRESET_STATUS_EFFECTS = [
 ];
 
 let players = [];
+let sharedMultiplier = 1;
 
 function saveInputToLocalStorage(key, id) {
     localStorage.setItem(key, document.getElementById(id).value);
@@ -403,6 +404,41 @@ function addPlayerFromUrl() {
         loadPlayers();
     } 
     
+}
+
+
+function getAllScores(){
+    let scores = [];
+    players.forEach(player => {
+        scores.push(player.score);
+    });
+    return scores;
+}
+
+function getMinDigits(scores) {
+    if (scores.length === 0) return 0; // Handle the case of empty array
+
+    // Convert each number to a string and measure its length (number of digits)
+    const digitsCounts = scores.map(score => score.toString().length);
+
+    // Find the minimum value in the array of digit counts
+    const minDigits = Math.min(...digitsCounts);
+
+    return minDigits;
+}
+
+//I need to store the multiplier in local storage
+function normalizeScores(){
+    let minDigits = getMinDigits(getAllScores());
+    
+    minDigits = Math.max(minDigits - 2, 1);
+    multiplier = 10 ** minDigits;
+    players.forEach(player => {
+        updateScore(player.name, player.score / multiplier);
+    });
+    sharedMultiplier = multiplier;
+    document.getElementById('multiplier').innerText = 'Multiplier: ' + sharedMultiplier;
+
 }
 
 // Wait for the DOM to load before running the script
